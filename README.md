@@ -19,7 +19,7 @@ graph LR
     subgraph VPC
         B
         F[Private Subnets]
-        G[NAT Gateways]
+        G[Single NAT Gateway]
     end
     
     subgraph Security
@@ -34,17 +34,23 @@ graph LR
 
 **Key Components:**
 - **MSK Serverless Cluster**: Fully managed Kafka with automatic scaling and no broker management
-- **VPC with Private/Public Subnets**: Dedicated network with NAT gateways for secure internet access
+- **VPC with Private/Public Subnets**: Dedicated network with single NAT gateway for cost-effective demos
 - **IAM Authentication**: Secure access using AWS IAM roles and policies
 - **Python Scripts**: Simple producer and consumer CLIs for testing and demonstration
 - **CloudWatch Integration**: Logs and monitoring for cluster health
 
+**Cost-Optimized Defaults:**
+- Single NAT gateway shared across all availability zones
+- 2 AZs minimum (required by MSK) for ~$0.36 per 15-minute demo
+- Can enable per-AZ NAT gateways for production high-availability
+
 ## ✨ Features
 
 - ✅ **MSK Serverless** - No broker provisioning, pay only for what you use
+- ✅ **Cost-Optimized Defaults** - ~$0.36 per 15-minute demo with single NAT gateway
 - ✅ **Complete Terraform IaC** - Reproducible infrastructure with modular design
 - ✅ **IAM Authentication** - Secure, credentials-free access using AWS IAM
-- ✅ **Production-Ready Networking** - VPC, subnets, NAT gateways, security groups
+- ✅ **Production-Ready Networking** - VPC, subnets, NAT gateway, security groups
 - ✅ **Python Client Scripts** - Working producer/consumer examples with proper error handling
 - ✅ **CI/CD Pipeline** - GitHub Actions for Terraform validation and Python linting
 - ✅ **Comprehensive Documentation** - Clear setup instructions and troubleshooting guide
@@ -120,8 +126,10 @@ cd infra
 # Initialize Terraform
 terraform init
 
-# (Optional) Create terraform.tfvars from example
-cp ../terraform.tfvars.example terraform.tfvars
+# (Optional) Use cost-optimized demo configuration
+cp ../demo.tfvars terraform.tfvars
+# OR customize your own:
+# cp ../terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars to customize region, VPC CIDR, etc.
 
 # Preview changes
@@ -217,7 +225,22 @@ Press `Ctrl+C` to stop the consumer.
 
 ## 💰 Cost Estimate
 
-### MSK Serverless Pricing
+### Understanding Your Costs
+
+**⏱️ Short Demo Cost (15-20 minutes):**
+- MSK Serverless cluster: ~$0.25
+- NAT Gateway: ~$0.10
+- Data transfer & storage: ~$0.01
+- **Total demo cost: ~$0.36** (less than 40 cents!)
+
+**📅 If Left Running Monthly:**
+- MSK Serverless cluster: ~$540/month ($0.75/hour × 730 hours)
+- Single NAT Gateway: ~$32/month ($0.045/hour × 730 hours)
+- 2 partitions: ~$2.16/month
+- Storage (< 1 GB): ~$0.10/month
+- **Total if left running: ~$574/month**
+
+### MSK Serverless Pricing Breakdown
 
 MSK Serverless charges for:
 1. **Cluster usage** - $0.75/hour per cluster
@@ -225,24 +248,38 @@ MSK Serverless charges for:
 3. **Storage** - $0.10/GB-month
 4. **Data transfer** - Standard AWS rates
 
-**Estimated monthly costs for this starter (light usage):**
-- Cluster running 24/7: ~$540/month
-- 2 partitions: ~$2.16/month
-- Storage (< 1 GB): ~$0.10/month
-- **Total: ~$542-550/month if left running**
+### NAT Gateway Pricing
 
-### Additional Infrastructure Costs
+- **Single NAT Gateway** (default): ~$32/month ($0.045/hour)
+- **Per-AZ NAT Gateways** (high-availability): ~$64/month for 2 AZs
 
-- **NAT Gateways**: ~$32-64/month per AZ (2 AZs = ~$64-128/month)
-- **Data transfer**: Minimal for testing
+This starter uses **one NAT gateway by default** to minimize demo costs while maintaining full functionality.
 
-**💡 Cost Optimization Tips:**
-- **Destroy when not in use**: Use `terraform destroy` (see below)
-- **Use provisioned MSK for 24/7 workloads**: Can be cheaper for continuous use
-- **Consider single NAT gateway**: For dev/test, use one NAT gateway instead of one per AZ
+### 💡 Cost Optimization Guide
+
+**For Quick Demos (<1 hour):**
+- ✅ Use the default single NAT gateway configuration
+- ✅ Destroy immediately after testing (`terraform destroy`)
+- Cost: **Less than $1**
+
+**For Development (few hours/day):**
+- ✅ Keep single NAT gateway
+- ✅ Use `terraform destroy` when done for the day
+- Daily cost: ~$2-5 depending on usage
+
+**For High-Availability Production:**
+- Set `single_nat_gateway = false` in `terraform.tfvars`
+- Each AZ gets its own NAT gateway for fault tolerance
+- Costs increase but eliminate single point of failure
 
 ### ⚠️ IMPORTANT: This is NOT a free-tier project
-Running this infrastructure will incur charges. Always destroy resources when finished with testing.
+Running this infrastructure will incur charges. **Always destroy resources when finished** with testing to avoid ongoing costs.
+
+### 🔥 Quick Teardown
+```bash
+cd infra && terraform destroy
+```
+Type `yes` when prompted. This typically completes in 2-3 minutes.
 
 ## 🧹 Teardown
 
@@ -285,14 +322,31 @@ aws ec2 describe-vpcs --filters "Name=tag:Project,Values=msk-kafka-starter" --re
 Customize your deployment by creating `infra/terraform.tfvars`:
 
 ```hcl
-aws_region         = "us-west-2"
-environment        = "production"
-project_name       = "my-kafka-cluster"
-vpc_cidr          = "10.1.0.0/16"
+aws_region  = "us-west-2"
+environment = "production"
+project_name = "my-kafka-cluster"
+
+# VPC Configuration
+vpc_cidr           = "10.1.0.0/16"
 availability_zones = ["us-west-2a", "us-west-2b", "us-west-2c"]
+
+# NAT Gateway: single (cost-optimized) vs per-AZ (high-availability)
+single_nat_gateway = false  # Use per-AZ NAT gateways for production
 ```
 
+**Pre-configured Options:**
+- `demo.tfvars` - Cost-optimized for short demos (~$0.36 per 15 min)
+- `terraform.tfvars.example` - Template with all available options
+
 See `terraform.tfvars.example` for all available options.
+
+### Key Configuration Options
+
+| Variable | Default | Description | Cost Impact |
+|----------|---------|-------------|-------------|
+| `single_nat_gateway` | `true` | Use one NAT gateway for all AZs | Saves ~$32/month per additional NAT gateway |
+| `availability_zones` | 2 AZs | Number of AZs (min 2 for MSK) | More AZs = higher network costs |
+| `kafka_topic_partitions` | 2 | Number of topic partitions | ~$1.08/month per partition |
 
 ### Python Scripts Configuration
 
@@ -442,7 +496,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## ⚠️ Disclaimer
 
-This is a starter template for development and testing. For production use:
+This is a starter template optimized for development, testing, and demos. 
+
+**Cost Management:**
+- Default configuration: ~$0.36 for a 15-minute demo
+- If left running: ~$574/month
+- **Always run `terraform destroy` when finished**
+
+**For production use:**
+- Set `single_nat_gateway = false` for high availability
 - Review and adjust security group rules
 - Implement proper monitoring and alerting
 - Consider multi-region setup for high availability

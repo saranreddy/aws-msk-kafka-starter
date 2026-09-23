@@ -45,3 +45,9 @@ variable "kafka_topic_replication_factor" {
   type        = number
   default     = 2
 }
+
+variable "single_nat_gateway" {
+  description = "Use a single NAT gateway for all AZs (cost-optimized for demos)"
+  type        = bool
+  default     = true
+}
