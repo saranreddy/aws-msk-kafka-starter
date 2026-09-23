@@ -68,7 +68,31 @@ python --version
 
 ## 🚀 Quick Start
 
-### 1. Clone and Setup
+### Automated Setup (Recommended)
+
+For a fully automated setup experience:
+
+```bash
+git clone https://github.com/saranreddy/aws-msk-kafka-starter.git
+cd aws-msk-kafka-starter
+
+# Run the setup script
+./scripts/setup.sh
+```
+
+The setup script will:
+- ✅ Check all prerequisites (AWS CLI, Terraform, Python)
+- ✅ Verify AWS credentials
+- ✅ Install Python dependencies
+- ✅ Deploy infrastructure with Terraform
+- ✅ Create the Kafka topic
+- ✅ Export connection details to `.env.msk`
+
+### Manual Setup
+
+Prefer to run commands yourself? Follow these steps:
+
+#### 1. Clone and Setup
 
 ```bash
 git clone https://github.com/saranreddy/aws-msk-kafka-starter.git
@@ -78,7 +102,7 @@ cd aws-msk-kafka-starter
 pip install -r requirements.txt
 ```
 
-### 2. Configure AWS Credentials
+#### 2. Configure AWS Credentials
 
 ```bash
 # Ensure AWS CLI is configured
@@ -88,7 +112,7 @@ aws configure list
 aws sts get-caller-identity
 ```
 
-### 3. Deploy Infrastructure with Terraform
+#### 3. Deploy Infrastructure with Terraform
 
 ```bash
 cd infra
@@ -112,7 +136,7 @@ terraform apply
 - Use the **same region** in all subsequent steps
 - Verify with: `terraform output aws_region`
 
-### 4. Get Connection Details
+#### 4. Get Connection Details
 
 ```bash
 # Export bootstrap servers for easy access
@@ -126,7 +150,7 @@ echo "Topic: $KAFKA_TOPIC"
 echo "Region: $AWS_REGION"
 ```
 
-### 5. Create Kafka Topic
+#### 5. Create Kafka Topic
 
 ```bash
 cd ../scripts
@@ -139,7 +163,7 @@ python create_topic.py \
   --region "$AWS_REGION"
 ```
 
-### 6. Produce Messages
+#### 6. Produce Messages
 
 ```bash
 python produce.py \
@@ -158,7 +182,7 @@ Expected output:
 ...
 ```
 
-### 7. Consume Messages
+#### 7. Consume Messages
 
 In a separate terminal:
 

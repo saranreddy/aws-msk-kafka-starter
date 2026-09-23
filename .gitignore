@@ -52,6 +52,7 @@ env/
 # Config files with sensitive data
 config.yaml
 .env
+.env.msk
 *.pem
 *.key
 
