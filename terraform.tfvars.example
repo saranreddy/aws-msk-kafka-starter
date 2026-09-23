@@ -1,0 +1,17 @@
+# Example Terraform variables
+# Copy this file to terraform.tfvars and adjust as needed
+
+aws_region  = "us-east-1"
+environment = "dev"
+project_name = "msk-kafka-starter"
+
+# VPC Configuration
+vpc_cidr = "10.0.0.0/16"
+
+# Must have at least 2 AZs for MSK
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+# Kafka Topic Configuration
+kafka_topic_name               = "demo-topic"
+kafka_topic_partitions         = 2
+kafka_topic_replication_factor = 2

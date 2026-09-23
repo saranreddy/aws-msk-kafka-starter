@@ -1,0 +1,16 @@
+# Example configuration file for AWS MSK Kafka Starter
+# Copy this file to config.yaml and fill in your values from Terraform outputs
+
+aws:
+  region: us-east-1
+
+kafka:
+  bootstrap_servers: "boot-xxxxxxxx.c1.kafka-serverless.us-east-1.amazonaws.com:9098"
+  topic: demo-topic
+  consumer_group: msk-starter-consumer-group
+
+# Get these values from: terraform output -json | jq
+# Or individually:
+#   terraform output -raw msk_bootstrap_brokers
+#   terraform output -raw aws_region
+#   terraform output -raw kafka_topic_name
