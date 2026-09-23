@@ -68,6 +68,23 @@ pip install -q -r "$PROJECT_ROOT/requirements.txt"
 echo -e "${GREEN}✓ Python dependencies installed${NC}"
 echo ""
 
+# Run doctor check
+echo "=========================================="
+echo "Running Health Checks"
+echo "=========================================="
+echo ""
+echo "Verifying AWS and Terraform setup..."
+cd "$SCRIPT_DIR"
+if python3 doctor.py; then
+    echo ""
+    echo -e "${GREEN}✓ Health checks passed!${NC}"
+else
+    echo ""
+    echo -e "${YELLOW}⚠ Some health checks failed, but we'll continue...${NC}"
+    echo -e "${YELLOW}  (Infrastructure checks will be skipped until resources are deployed)${NC}"
+fi
+echo ""
+
 # Deploy infrastructure
 echo "=========================================="
 echo "Deploying Infrastructure with Terraform"
@@ -149,6 +166,29 @@ echo ""
 echo -e "${GREEN}✓ Kafka topic created successfully!${NC}"
 echo ""
 
+# Run smoke test
+echo "=========================================="
+echo "Running Smoke Test"
+echo "=========================================="
+echo ""
+echo -e "${YELLOW}Testing end-to-end message flow...${NC}"
+echo ""
+
+cd "$SCRIPT_DIR"
+if python3 smoke_test.py \
+    --bootstrap-servers "$BOOTSTRAP_SERVERS" \
+    --topic "$KAFKA_TOPIC" \
+    --region "$AWS_REGION"; then
+    echo ""
+    echo -e "${GREEN}✓ Smoke test passed! Your setup is fully functional.${NC}"
+else
+    echo ""
+    echo -e "${YELLOW}⚠ Smoke test failed.${NC}"
+    echo -e "${YELLOW}  This may be due to network connectivity if running outside the VPC.${NC}"
+    echo -e "${YELLOW}  See the README Network Access section for details.${NC}"
+fi
+echo ""
+
 # Final instructions
 echo "=========================================="
 echo "Setup Complete!"
@@ -159,13 +199,19 @@ echo ""
 echo "1. Source the environment variables:"
 echo "   source .env.msk"
 echo ""
-echo "2. Produce some messages:"
+echo "2. Run health checks anytime:"
+echo "   make doctor"
+echo ""
+echo "3. Run smoke test to verify setup:"
+echo "   make smoke"
+echo ""
+echo "4. Produce some messages:"
 echo "   python3 scripts/produce.py \\"
 echo "     --bootstrap-servers \"\$BOOTSTRAP_SERVERS\" \\"
 echo "     --topic \"\$KAFKA_TOPIC\" \\"
 echo "     --region \"\$AWS_REGION\""
 echo ""
-echo "3. Consume messages (in another terminal):"
+echo "5. Consume messages (in another terminal):"
 echo "   python3 scripts/consume.py \\"
 echo "     --bootstrap-servers \"\$BOOTSTRAP_SERVERS\" \\"
 echo "     --topic \"\$KAFKA_TOPIC\" \\"
