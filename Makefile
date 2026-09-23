@@ -1,4 +1,4 @@
-.PHONY: help init plan apply destroy clean format lint test
+.PHONY: help init plan apply destroy clean format lint test doctor smoke
 
 help:
 	@echo "AWS MSK Kafka Starter - Makefile Commands"
@@ -15,6 +15,10 @@ help:
 	@echo "  make lint      - Run linters"
 	@echo "  make test      - Run all tests and checks"
 	@echo "  make clean     - Clean temporary files"
+	@echo ""
+	@echo "Health & Testing Commands:"
+	@echo "  make doctor    - Run health checks for AWS and MSK setup"
+	@echo "  make smoke     - Run end-to-end smoke test (requires deployed infra)"
 	@echo ""
 	@echo "Kafka Commands:"
 	@echo "  make setup-env - Export Terraform outputs as environment variables"
@@ -97,4 +101,17 @@ consume:
 		--bootstrap-servers "$$BOOTSTRAP_SERVERS" \
 		--topic "$$KAFKA_TOPIC" \
 		--from-beginning \
+		--region "$$AWS_REGION"
+
+doctor:
+	python scripts/doctor.py
+
+smoke:
+	@if [ -z "$$BOOTSTRAP_SERVERS" ]; then \
+		echo "Error: BOOTSTRAP_SERVERS not set. Run 'make setup-env' first."; \
+		exit 1; \
+	fi
+	python scripts/smoke_test.py \
+		--bootstrap-servers "$$BOOTSTRAP_SERVERS" \
+		--topic "$$KAFKA_TOPIC" \
 		--region "$$AWS_REGION"

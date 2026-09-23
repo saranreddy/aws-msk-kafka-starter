@@ -52,6 +52,7 @@ graph LR
 - ✅ **IAM Authentication** - Secure, credentials-free access using AWS IAM
 - ✅ **Production-Ready Networking** - VPC, subnets, NAT gateway, security groups
 - ✅ **Python Client Scripts** - Working producer/consumer examples with proper error handling
+- ✅ **Health Checks & Smoke Tests** - Doctor script for diagnostics, smoke test for end-to-end validation
 - ✅ **CI/CD Pipeline** - GitHub Actions for Terraform validation and Python linting
 - ✅ **Comprehensive Documentation** - Clear setup instructions and troubleshooting guide
 
@@ -118,6 +119,17 @@ aws configure list
 aws sts get-caller-identity
 ```
 
+**💡 Run health checks (recommended):**
+
+```bash
+# Verify your AWS setup before deploying
+python scripts/doctor.py
+# OR
+make doctor
+```
+
+The doctor script checks AWS credentials, Terraform installation, and configuration. See the [Health Checks & Testing](#-health-checks--testing) section for details.
+
 #### 3. Deploy Infrastructure with Terraform
 
 ```bash
@@ -143,6 +155,20 @@ terraform apply
 - Choose your AWS region in `terraform.tfvars` (default: `us-east-1`)
 - Use the **same region** in all subsequent steps
 - Verify with: `terraform output aws_region`
+
+**✅ Verify deployment (recommended):**
+
+After `terraform apply` completes, verify your setup:
+
+```bash
+# Run health checks
+cd ..
+python scripts/doctor.py
+
+# Verify with smoke test (requires VPC network access)
+# See Network Access section if not running from within VPC
+make smoke
+```
 
 #### 4. Get Connection Details
 
@@ -222,6 +248,196 @@ Expected output:
 ```
 
 Press `Ctrl+C` to stop the consumer.
+
+## 🩺 Health Checks & Testing
+
+### Doctor Script
+
+Before deploying infrastructure or troubleshooting issues, run the doctor script to verify your setup:
+
+```bash
+python scripts/doctor.py
+# OR
+make doctor
+```
+
+The doctor script performs comprehensive health checks:
+
+✅ **Prerequisites**
+- AWS CLI installation and version
+- AWS credentials and authentication
+- Terraform installation
+- Python dependencies
+
+✅ **Infrastructure**
+- Terraform state and outputs
+- Region consistency (environment, AWS CLI, Terraform)
+- Bootstrap servers format validation
+
+✅ **MSK Cluster**
+- Cluster state (ACTIVE status)
+- IAM permissions for MSK operations
+- Network access requirements and VPC configuration
+
+**Example output:**
+
+```
+================================================================================
+AWS MSK Kafka Doctor - Health Check Results
+================================================================================
+
+✅ PASS - AWS CLI
+    AWS CLI is installed: aws-cli/2.13.0
+
+✅ PASS - AWS Credentials
+    Authenticated as: arn:aws:iam::123456789012:user/admin
+
+✅ PASS - Terraform
+    Terraform is installed: v1.5.0
+
+✅ PASS - Terraform State
+    Terraform state found with 8 outputs
+
+✅ PASS - Region Consistency
+    All sources agree on region: us-east-1
+
+✅ PASS - MSK Cluster Status
+    MSK cluster is ACTIVE
+
+================================================================================
+Summary: 10/10 checks passed
+================================================================================
+```
+
+**When to run the doctor:**
+- ✅ Before deploying infrastructure (`terraform apply`)
+- ✅ After deploying to verify setup
+- ✅ When troubleshooting connectivity issues
+- ✅ Before running producer/consumer scripts
+
+### Smoke Test
+
+After deploying infrastructure and verifying network connectivity, run the smoke test to validate end-to-end functionality:
+
+```bash
+# Set environment variables first
+export BOOTSTRAP_SERVERS=$(cd infra && terraform output -raw msk_bootstrap_brokers)
+export KAFKA_TOPIC=$(cd infra && terraform output -raw kafka_topic_name)
+export AWS_REGION=$(cd infra && terraform output -raw aws_region)
+
+# Run smoke test
+python scripts/smoke_test.py \
+  --bootstrap-servers "$BOOTSTRAP_SERVERS" \
+  --topic "$KAFKA_TOPIC" \
+  --region "$AWS_REGION"
+
+# OR use Makefile
+make smoke
+```
+
+**What the smoke test does:**
+
+1. **Topic Creation** - Ensures the Kafka topic exists (creates if needed)
+2. **Message Production** - Produces 5 test messages with unique IDs
+3. **Message Consumption** - Consumes messages and verifies all were received
+4. **Exit Code** - Returns 0 only if all steps succeed
+
+**Example output:**
+
+```
+================================================================================
+AWS MSK Kafka Smoke Test
+Test ID: 20260923213045
+Bootstrap: boot-xxxxx.yyyy.kafka-serverless.us-east-1.amazonaws.com:9098
+Topic: demo-topic
+Region: us-east-1
+================================================================================
+
+Step 1: Ensuring topic exists...
+✅ Topic 'demo-topic' already exists
+
+Step 2: Producing test messages...
+  ✅ Sent message 1/5 (partition: 0, offset: 42)
+  ✅ Sent message 2/5 (partition: 1, offset: 38)
+  ✅ Sent message 3/5 (partition: 0, offset: 43)
+  ✅ Sent message 4/5 (partition: 1, offset: 39)
+  ✅ Sent message 5/5 (partition: 0, offset: 44)
+✅ Successfully produced 5 messages
+
+Step 3: Consuming and verifying messages...
+  ✅ Received message 1/5 (partition: 0, offset: 42)
+  ✅ Received message 2/5 (partition: 1, offset: 38)
+  ✅ Received message 3/5 (partition: 0, offset: 43)
+  ✅ Received message 4/5 (partition: 1, offset: 39)
+  ✅ Received message 5/5 (partition: 0, offset: 44)
+✅ All expected messages received
+
+================================================================================
+✅ SMOKE TEST PASSED
+All messages were successfully produced and consumed
+================================================================================
+```
+
+**Smoke test options:**
+
+```bash
+python scripts/smoke_test.py \
+  --bootstrap-servers "$BOOTSTRAP_SERVERS" \
+  --topic "demo-topic" \
+  --region "us-east-1" \
+  --message-count 10 \        # Number of test messages (default: 5)
+  --timeout 60                 # Consumer timeout in seconds (default: 60)
+```
+
+**When to run the smoke test:**
+- ✅ After deploying infrastructure (`terraform apply`)
+- ✅ After making configuration changes
+- ✅ To verify producer/consumer connectivity
+- ✅ Before running your own applications
+
+**Important notes:**
+- ⚠️  Requires network connectivity to MSK brokers (see Network Access section below)
+- ⚠️  Must be run from within the VPC or via SSM/bastion/VPN
+- ⚠️  Returns exit code 0 on success, 1 on failure (suitable for CI/CD)
+
+### Network Access for Testing
+
+MSK Serverless uses **private VPC endpoints** (port 9098). To run smoke tests or producer/consumer scripts:
+
+**Option 1: EC2 Instance in Same VPC** (Recommended for testing)
+```bash
+# Launch an EC2 instance in the same VPC
+# Install dependencies
+sudo yum install -y python3-pip git
+git clone https://github.com/saranreddy/aws-msk-kafka-starter.git
+cd aws-msk-kafka-starter
+pip3 install -r requirements.txt
+
+# Run smoke test
+make smoke
+```
+
+**Option 2: AWS Systems Manager Session Manager**
+```bash
+# Port forward to MSK broker through SSM
+aws ssm start-session \
+  --target <instance-id> \
+  --document-name AWS-StartPortForwardingSession \
+  --parameters '{"portNumber":["9098"],"localPortNumber":["9098"]}'
+```
+
+**Option 3: VPN or AWS Direct Connect**
+- Connect your local network to the VPC
+- Requires VPN or Direct Connect setup
+
+**Option 4: Bastion Host**
+- Deploy a bastion host in a public subnet
+- SSH tunnel through the bastion to access MSK
+
+**Local Testing Limitation:**
+- ❌ Cannot connect directly from laptop/desktop without VPC network path
+- ✅ Doctor script can verify AWS credentials and Terraform state locally
+- ✅ Smoke test requires VPC connectivity
 
 ## 💰 Cost Estimate
 
