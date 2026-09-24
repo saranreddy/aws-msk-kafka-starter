@@ -6,6 +6,27 @@
 
 A production-ready starter for AWS MSK (Managed Streaming for Apache Kafka) with Terraform infrastructure, Python producer/consumer scripts, and complete documentation. Deploy a fully functional Kafka cluster with IAM authentication in minutes.
 
+## 👥 Who Is This For?
+
+**This starter is built for:**
+- Teams adopting Kafka on AWS without managing brokers or cluster capacity
+- Platform engineers who need a known-good MSK Serverless + IAM auth baseline to build on
+- Developers prototyping event streaming against real MSK infrastructure before committing to larger deployments
+- Organizations evaluating managed Kafka offerings in their AWS environment
+
+**Good fit when you need:**
+- Event streaming between microservices or decoupled services with message replay
+- Change data capture (CDC) pipelines or clickstream ingestion into data lakes
+- Decoupling producers from multiple consumers with durable message retention
+- A proof of concept before scaling to provisioned MSK or evaluating Confluent Cloud
+- Common in e-commerce order processing, logistics event pipelines, fintech transaction streams, and adtech data platforms
+
+**Not a good fit when:**
+- You need simple point-to-point queuing or fan-out without replay — consider [AWS SQS, SNS, or EventBridge](https://docs.aws.amazon.com/eventbridge/) instead (see also: [`saranreddy/aws-eventbridge-lambda-sqs-starter`](https://github.com/saranreddy/aws-eventbridge-lambda-sqs-starter))
+- Your workload requires sustained very high throughput (>200 MB/s writes) or broker-level tuning — provisioned MSK may be more cost-effective
+- You're already standardized on Confluent Cloud or another managed Kafka service
+- Budget is extremely constrained — MSK Serverless clusters cost ~$0.75/hour ($540+/month) plus NAT gateway costs (~$32/month), so **always `terraform destroy` after demos and testing**
+
 ## 🏗️ Architecture
 
 ```mermaid
