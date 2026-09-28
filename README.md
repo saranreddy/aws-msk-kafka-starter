@@ -29,29 +29,9 @@ A production-ready starter for AWS MSK (Managed Streaming for Apache Kafka) with
 
 ## 🏗️ Architecture
 
-```mermaid
-graph LR
-    A[Producer Script] -->|IAM Auth| B[MSK Serverless Cluster]
-    B --> C[Kafka Topic: demo-topic]
-    C -->|IAM Auth| D[Consumer Script]
-    
-    B -.-> E[CloudWatch Logs]
-    
-    subgraph VPC
-        B
-        F[Private Subnets]
-        G[Single NAT Gateway]
-    end
-    
-    subgraph Security
-        H[IAM Roles & Policies]
-        I[Security Groups]
-    end
-    
-    H -.->|Authenticate| A
-    H -.->|Authenticate| D
-    I -.->|Control Access| B
-```
+![AWS MSK Kafka Starter Architecture - Terraform-deployed MSK Serverless cluster with IAM authentication, VPC networking, NAT gateway, and Python producer/consumer clients](docs/architecture.png)
+
+_Diagram generated from [`docs/architecture.py`](docs/architecture.py). Requires `pip install diagrams` and Graphviz; run `python docs/architecture.py` to regenerate._
 
 **Key Components:**
 - **MSK Serverless Cluster**: Fully managed Kafka with automatic scaling and no broker management
